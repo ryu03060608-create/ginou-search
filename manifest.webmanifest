@@ -1,0 +1,17 @@
+{
+  "name": "外国人材 受入れ判定",
+  "short_name": "受入れ判定",
+  "description": "業務から技能実習・育成就労・特定技能の使える制度・何年いられるか・家族帯同を判定",
+  "lang": "ja",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0f131a",
+  "theme_color": "#2563eb",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
