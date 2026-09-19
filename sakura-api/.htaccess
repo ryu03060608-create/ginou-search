@@ -1,0 +1,13 @@
+# /api/analyze で analyze.php を呼べるようにする（フロントは /api/analyze を叩く）
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteRule ^analyze$ analyze.php [L]
+</IfModule>
+
+# 設定ファイル（APIキー）への直アクセスを禁止
+<Files "config.php">
+  Require all denied
+</Files>
+<Files "config.sample.php">
+  Require all denied
+</Files>

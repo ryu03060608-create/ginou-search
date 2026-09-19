@@ -11,3 +11,6 @@ npm-debug.log*
 # editor / OS
 .DS_Store
 Thumbs.db
+
+# さくらAPIのローカル設定（キーを含む）
+sakura-api/config.php

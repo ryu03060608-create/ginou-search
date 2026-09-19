@@ -19,7 +19,27 @@
 - **APIキー**：サーバーの環境変数 `ANTHROPIC_API_KEY` に置きます（ブラウザには一切出ません）。
 - **幻覚対策**：`src/data.js` の公式リストを「選択肢」として渡し、その中からのみ候補を選ばせています。
 
-### バックエンドの起動（自前サーバー）
+### さくらのレンタルサーバ（共用）で動かす — PHP版
+
+共用サーバーは常駐プロセス（Node）を動かせないため、PHP版バックエンド（`sakura-api/`）を使います。
+
+1. **ビルド**（この作業だけPCで行う）
+   ```bash
+   npm install
+   npm run build:sakura   # dist/ を作成し、sakura-api/taxonomy.txt を更新
+   ```
+2. **アップロード**（FTP／ファイルマネージャー）— 公開フォルダ（例 `www/`）へ：
+   - `dist/` の中身すべて → `www/` 直下
+   - `sakura-api/` の中身（`analyze.php` `.htaccess` `config.sample.php` `taxonomy.txt`）→ `www/api/`
+3. **APIキーを設定**：`www/api/config.sample.php` を `config.php` にコピーし、`api_key` を自分のキーに書き換える（`config.php` は `.htaccess` で外部から見えないよう保護済み）。
+4. **PHPバージョン**：さくらのコントロールパネルで PHP 8.x を選択。
+5. ブラウザで `https://<自分のドメイン>/` を開き、URLか会社名を入れて「AIで調べる」。
+
+補足：
+- フロントの `/api/analyze` は `.htaccess` により `analyze.php` に転送されます。
+- 共用サーバーは実行時間に上限があり、`web検索`で時間がかかると稀に途中終了します。既定モデルは速い `claude-sonnet-5`（`config.php` で変更可）。
+
+### バックエンドの起動（VPS／自前Nodeサーバー）
 
 ```bash
 npm install

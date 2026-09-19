@@ -8,6 +8,7 @@
     "dev": "vite",
     "build": "vite build",
     "build:single": "vite build && node scripts/inline-single.mjs",
+    "build:sakura": "vite build && node scripts/gen-taxonomy.mjs",
     "preview": "vite preview",
     "start": "node server/index.mjs"
   },
