@@ -3,6 +3,7 @@ import { GINOU_JISSHU, TOKUTEI_GINOU, SOURCES } from './data.js'
 import { computeQuota, HEARING_CHECKLIST, NOTES } from './sales.js'
 import { expandTokens, rowMatches } from './synonyms.js'
 import { STAGES, PLAN_RULES, SHINSA, EXAM_NOTE, SYSTEM_SOURCES } from './system.js'
+import { MODELS, loadKey, saveKey, loadModel, saveModel, fetchSiteText, analyze } from './ai.js'
 
 // 制度（一覧モードのタブ）
 const SYSTEMS = {
@@ -73,17 +74,24 @@ function JobCard({ row, term }) {
 }
 
 export default function App() {
-  const [mode, setMode] = useState('shindan') // 'shindan' | 'ichiran'
+  const [mode, setMode] = useState('aidx') // 'aidx' | 'shindan' | 'ichiran' | 'seido'
 
   return (
     <>
       <header>
         <div className="wrap">
           <div className="tabs">
+            <button className={mode === 'aidx' ? 'tab on' : 'tab'} onClick={() => setMode('aidx')}>AI診断（URL）</button>
             <button className={mode === 'shindan' ? 'tab on' : 'tab'} onClick={() => setMode('shindan')}>受入れ診断</button>
             <button className={mode === 'ichiran' ? 'tab on' : 'tab'} onClick={() => setMode('ichiran')}>職種一覧</button>
             <button className={mode === 'seido' ? 'tab on' : 'tab'} onClick={() => setMode('seido')}>制度のしくみ</button>
           </div>
+          {mode === 'aidx' && (
+            <>
+              <h1>企業HPからAI診断</h1>
+              <p className="lead">企業のURL（またはHP本文）から、技能実習・特定技能で候補になりそうな分野・作業を「証拠の強さ」付きで提示します。</p>
+            </>
+          )}
           {mode === 'shindan' && (
             <>
               <h1>技能実習 受入れ診断</h1>
@@ -106,6 +114,7 @@ export default function App() {
       </header>
       <main>
         <div className="wrap-main">
+          {mode === 'aidx' && <AIShindan />}
           {mode === 'shindan' && <Shindan />}
           {mode === 'ichiran' && <Ichiran />}
           {mode === 'seido' && <Seido />}
@@ -120,6 +129,152 @@ export default function App() {
         <a href={SOURCES.tokuteiGinou[0].url} target="_blank" rel="noopener noreferrer">出入国在留管理庁 特定技能</a>
       </footer>
     </>
+  )
+}
+
+// ============================================================
+// AI診断モード（企業HP → 制度別の候補＋証拠の強さ）
+// ============================================================
+const STRENGTH_CLASS = { '強': 'strong', '中': 'mid', '弱': 'weak' }
+
+function AIShindan() {
+  const [apiKey, setApiKey] = useState(loadKey())
+  const [model, setModel] = useState(loadModel())
+  const [url, setUrl] = useState('')
+  const [text, setText] = useState('')
+  const [fetching, setFetching] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [result, setResult] = useState(null)
+
+  function onKey(v) { setApiKey(v); saveKey(v) }
+  function onModel(v) { setModel(v); saveModel(v) }
+
+  async function onFetch() {
+    setError(''); setFetching(true)
+    try {
+      const t = await fetchSiteText(url)
+      setText(t)
+    } catch (e) {
+      setError(e.message || String(e))
+    } finally {
+      setFetching(false)
+    }
+  }
+
+  async function onAnalyze() {
+    setError(''); setResult(null); setLoading(true)
+    try {
+      const r = await analyze({ apiKey, model, companyText: text })
+      setResult(r)
+    } catch (e) {
+      setError(e?.message ? `診断に失敗しました：${e.message}` : String(e))
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="aidx">
+      {/* 免責 */}
+      <div className="disclaimer">
+        ⚠️ 本ツールが出せるのは<b>「業種の当たり」まで</b>です。在留資格の可否は、実際に従事する具体的作業・必須業務の比率・受入れ体制で決まり、HPには通常載っていません。
+        結果は<b>確率ではなく「証拠の強さ」</b>であり、最終的な可否は必ず監理団体・登録支援機関・出入国在留管理局でご確認ください。技人国は本診断の対象外です。
+      </div>
+
+      {/* APIキー設定 */}
+      <section className="step">
+        <div className="step-head"><span className="step-no">0</span>APIキー設定（初回のみ）</div>
+        <div className="key-row">
+          <input
+            type="password" value={apiKey} onChange={(e) => onKey(e.target.value)}
+            placeholder="Anthropic APIキー（sk-ant-...）" autoComplete="off"
+          />
+          <select value={model} onChange={(e) => onModel(e.target.value)}>
+            {MODELS.map((m) => (<option key={m.id} value={m.id}>{m.label}</option>))}
+          </select>
+        </div>
+        <p className="hint">キーはこの端末のブラウザ（localStorage）にのみ保存され、Anthropic以外には送信しません。共用端末では使用後に空欄にして保存を消してください。キー発行：<a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener noreferrer">console.anthropic.com</a></p>
+      </section>
+
+      {/* URL入力 */}
+      <section className="step">
+        <div className="step-head"><span className="step-no">1</span>企業URLを取得、またはHP本文を貼り付け</div>
+        <div className="url-row">
+          <input
+            type="url" value={url} onChange={(e) => setUrl(e.target.value)}
+            placeholder="https://example.co.jp" autoComplete="off"
+            onKeyDown={(e) => { if (e.key === 'Enter') onFetch() }}
+          />
+          <button className="btn" onClick={onFetch} disabled={fetching || !url.trim()}>
+            {fetching ? '取得中…' : '本文を取得'}
+          </button>
+        </div>
+        <p className="hint">取得はリーダー(r.jina.ai)経由のため、対象URLが同サービスに送信されます。取得できない場合は下の欄に会社概要・事業内容を貼り付けてください。</p>
+        <textarea
+          className="hp-text" value={text} onChange={(e) => setText(e.target.value)}
+          placeholder="ここにHP本文（事業内容・製品・工程など）が入ります。手入力・貼り付けも可。"
+          rows={8}
+        />
+        {text && <p className="hint">{text.length.toLocaleString()} 文字</p>}
+      </section>
+
+      {/* 診断ボタン */}
+      <section className="step">
+        <div className="step-head"><span className="step-no">2</span>AIで候補を診断</div>
+        <button className="btn primary" onClick={onAnalyze} disabled={loading || !apiKey || text.trim().length < 20}>
+          {loading ? 'AIが解析中…（10〜30秒）' : 'この内容で診断する'}
+        </button>
+        {error && <div className="verdict ng" style={{ marginTop: 12 }}>⚠️ {error}</div>}
+      </section>
+
+      {/* 結果 */}
+      {result && (
+        <section className="step">
+          <div className="step-head"><span className="step-no">✓</span>診断結果</div>
+          {result.summary && <p className="ai-summary">{result.summary}</p>}
+
+          {result.systems.map((s) => (
+            <div className="group" key={s.system}>
+              <h2>{s.system}<span className="n">{s.candidates.length}件</span></h2>
+              {s.candidates.length === 0 ? (
+                <div className="note">明確な候補は見つかりませんでした。</div>
+              ) : (
+                <div className="grid">
+                  {s.candidates.map((c, i) => (
+                    <div className="card ai-card" key={s.system + i}>
+                      <div className="ai-card-head">
+                        <p className="job">{c.field} ＞ {c.job}</p>
+                        <span className={'strength ' + (STRENGTH_CLASS[c.strength] || 'weak')}>証拠：{c.strength || '弱'}</span>
+                      </div>
+                      {c.tasks.length > 0 && (
+                        <ul className="tasks">
+                          {c.tasks.map((t, j) => (<li className="task-item" key={j}><span className="task-name">{t}</span></li>))}
+                        </ul>
+                      )}
+                      {c.evidence && <p className="ai-evidence">根拠：{c.evidence}</p>}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
+
+          {result.questions.length > 0 && (
+            <div className="ai-block">
+              <h3>確認すべき質問（営業ヒアリング）</h3>
+              <ul className="notes">{result.questions.map((q, i) => (<li key={i}>{q}</li>))}</ul>
+            </div>
+          )}
+          {result.caveats.length > 0 && (
+            <div className="ai-block caveats">
+              <h3>この診断の限界・注意点</h3>
+              <ul className="notes">{result.caveats.map((c, i) => (<li key={i}>{c}</li>))}</ul>
+            </div>
+          )}
+        </section>
+      )}
+    </div>
   )
 }
 

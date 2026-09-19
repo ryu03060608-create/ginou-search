@@ -580,3 +580,128 @@ footer {
 footer a {
   color: var(--accent);
 }
+
+/* ============================================================
+   AI診断モード
+   ============================================================ */
+.disclaimer {
+  background: var(--accent-soft);
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--accent);
+  border-radius: 10px;
+  padding: 12px 14px;
+  font-size: 13px;
+  line-height: 1.7;
+  margin-bottom: 18px;
+}
+
+.key-row, .url-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.key-row input, .url-row input {
+  flex: 1 1 240px;
+  min-width: 0;
+  padding: 11px 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--card);
+  color: var(--ink);
+  font-size: 15px;
+}
+.key-row select {
+  padding: 11px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--card);
+  color: var(--ink);
+  font-size: 14px;
+}
+.hp-text {
+  width: 100%;
+  margin-top: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--card);
+  color: var(--ink);
+  font-size: 14px;
+  line-height: 1.6;
+  resize: vertical;
+  font-family: inherit;
+}
+
+.btn {
+  padding: 11px 18px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--card);
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+.btn.primary {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+  width: 100%;
+  padding: 14px;
+  font-size: 15px;
+}
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+
+.ai-summary {
+  font-size: 14.5px;
+  line-height: 1.7;
+  background: var(--chip);
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin: 0 0 16px;
+}
+
+.ai-card .ai-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+}
+.strength {
+  flex: none;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.strength.strong { background: #10b981; color: #fff; }
+.strength.mid { background: #f59e0b; color: #fff; }
+.strength.weak { background: var(--chip); color: var(--sub); }
+
+.ai-evidence {
+  margin: 8px 0 0;
+  font-size: 12.5px;
+  line-height: 1.65;
+  color: var(--sub);
+  border-top: 1px dashed var(--line);
+  padding-top: 8px;
+}
+
+.ai-block {
+  margin-top: 20px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 14px 16px;
+  box-shadow: var(--shadow);
+}
+.ai-block h3 {
+  margin: 0 0 10px;
+  font-size: 15px;
+}
+.ai-block.caveats {
+  background: var(--accent-soft);
+}
