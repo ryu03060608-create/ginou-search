@@ -3,7 +3,7 @@ import { GINOU_JISSHU, TOKUTEI_GINOU, SOURCES } from './data.js'
 import { computeQuota, HEARING_CHECKLIST, NOTES } from './sales.js'
 import { expandTokens, rowMatches } from './synonyms.js'
 import { STAGES, PLAN_RULES, SHINSA, EXAM_NOTE, SYSTEM_SOURCES } from './system.js'
-import { MODELS, loadKey, saveKey, loadModel, saveModel, fetchSiteText, analyze } from './ai.js'
+import { analyze } from './ai.js'
 
 // 制度（一覧モードのタブ）
 const SYSTEMS = {
@@ -89,7 +89,7 @@ export default function App() {
           {mode === 'aidx' && (
             <>
               <h1>企業HPからAI診断</h1>
-              <p className="lead">企業のURL（またはHP本文）から、技能実習・特定技能で候補になりそうな分野・作業を「証拠の強さ」付きで提示します。</p>
+              <p className="lead">企業のURLか会社名を入れるだけ。AIがウェブで調べ、技能実習・特定技能で候補になりそうな分野・作業を「証拠の強さ」付きで提示します。</p>
             </>
           )}
           {mode === 'shindan' && (
@@ -138,37 +138,19 @@ export default function App() {
 const STRENGTH_CLASS = { '強': 'strong', '中': 'mid', '弱': 'weak' }
 
 function AIShindan() {
-  const [apiKey, setApiKey] = useState(loadKey())
-  const [model, setModel] = useState(loadModel())
-  const [url, setUrl] = useState('')
-  const [text, setText] = useState('')
-  const [fetching, setFetching] = useState(false)
+  const [query, setQuery] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [result, setResult] = useState(null)
 
-  function onKey(v) { setApiKey(v); saveKey(v) }
-  function onModel(v) { setModel(v); saveModel(v) }
-
-  async function onFetch() {
-    setError(''); setFetching(true)
-    try {
-      const t = await fetchSiteText(url)
-      setText(t)
-    } catch (e) {
-      setError(e.message || String(e))
-    } finally {
-      setFetching(false)
-    }
-  }
-
   async function onAnalyze() {
+    if (!query.trim() || loading) return
     setError(''); setResult(null); setLoading(true)
     try {
-      const r = await analyze({ apiKey, model, companyText: text })
+      const r = await analyze(query)
       setResult(r)
     } catch (e) {
-      setError(e?.message ? `診断に失敗しました：${e.message}` : String(e))
+      setError(e?.message ? String(e.message) : String(e))
     } finally {
       setLoading(false)
     }
@@ -178,53 +160,26 @@ function AIShindan() {
     <div className="aidx">
       {/* 免責 */}
       <div className="disclaimer">
-        ⚠️ 本ツールが出せるのは<b>「業種の当たり」まで</b>です。在留資格の可否は、実際に従事する具体的作業・必須業務の比率・受入れ体制で決まり、HPには通常載っていません。
+        ⚠️ 本ツールが出せるのは<b>「業種の当たり」まで</b>です。在留資格の可否は、実際に従事する具体的作業・必須業務の比率・受入れ体制で決まり、公開情報には通常載っていません。
         結果は<b>確率ではなく「証拠の強さ」</b>であり、最終的な可否は必ず監理団体・登録支援機関・出入国在留管理局でご確認ください。技人国は本診断の対象外です。
       </div>
 
-      {/* APIキー設定 */}
+      {/* 入力：URLまたは会社名 */}
       <section className="step">
-        <div className="step-head"><span className="step-no">0</span>APIキー設定（初回のみ）</div>
-        <div className="key-row">
-          <input
-            type="password" value={apiKey} onChange={(e) => onKey(e.target.value)}
-            placeholder="Anthropic APIキー（sk-ant-...）" autoComplete="off"
-          />
-          <select value={model} onChange={(e) => onModel(e.target.value)}>
-            {MODELS.map((m) => (<option key={m.id} value={m.id}>{m.label}</option>))}
-          </select>
-        </div>
-        <p className="hint">キーはこの端末のブラウザ（localStorage）にのみ保存され、Anthropic以外には送信しません。共用端末では使用後に空欄にして保存を消してください。キー発行：<a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener noreferrer">console.anthropic.com</a></p>
-      </section>
-
-      {/* URL入力 */}
-      <section className="step">
-        <div className="step-head"><span className="step-no">1</span>企業URLを取得、またはHP本文を貼り付け</div>
+        <div className="step-head"><span className="step-no">1</span>企業のURL、または会社名を入力</div>
         <div className="url-row">
           <input
-            type="url" value={url} onChange={(e) => setUrl(e.target.value)}
-            placeholder="https://example.co.jp" autoComplete="off"
-            onKeyDown={(e) => { if (e.key === 'Enter') onFetch() }}
+            type="text" value={query} onChange={(e) => setQuery(e.target.value)}
+            placeholder="例：https://example.co.jp　または　○○金属工業株式会社"
+            autoComplete="off"
+            onKeyDown={(e) => { if (e.key === 'Enter') onAnalyze() }}
           />
-          <button className="btn" onClick={onFetch} disabled={fetching || !url.trim()}>
-            {fetching ? '取得中…' : '本文を取得'}
+          <button className="btn primary" onClick={onAnalyze} disabled={loading || !query.trim()}>
+            {loading ? 'AIが調査中…' : 'AIで調べる'}
           </button>
         </div>
-        <p className="hint">取得はリーダー(r.jina.ai)経由のため、対象URLが同サービスに送信されます。取得できない場合は下の欄に会社概要・事業内容を貼り付けてください。</p>
-        <textarea
-          className="hp-text" value={text} onChange={(e) => setText(e.target.value)}
-          placeholder="ここにHP本文（事業内容・製品・工程など）が入ります。手入力・貼り付けも可。"
-          rows={8}
-        />
-        {text && <p className="hint">{text.length.toLocaleString()} 文字</p>}
-      </section>
-
-      {/* 診断ボタン */}
-      <section className="step">
-        <div className="step-head"><span className="step-no">2</span>AIで候補を診断</div>
-        <button className="btn primary" onClick={onAnalyze} disabled={loading || !apiKey || text.trim().length < 20}>
-          {loading ? 'AIが解析中…（10〜30秒）' : 'この内容で診断する'}
-        </button>
+        <p className="hint">AIがウェブ検索・ページ取得で事業内容を調べ、技能実習・特定技能の候補を提示します（20〜60秒ほどかかります）。</p>
+        {loading && <div className="verdict" style={{ marginTop: 12 }}>🔎 AIがウェブを調べています…（検索→読み込み→判定）少しお待ちください。</div>}
         {error && <div className="verdict ng" style={{ marginTop: 12 }}>⚠️ {error}</div>}
       </section>
 
@@ -233,6 +188,11 @@ function AIShindan() {
         <section className="step">
           <div className="step-head"><span className="step-no">✓</span>診断結果</div>
           {result.summary && <p className="ai-summary">{result.summary}</p>}
+          {result.sources.length > 0 && (
+            <p className="ai-sources">参照：{result.sources.map((u, i) => (
+              <a key={i} href={u} target="_blank" rel="noopener noreferrer">{u}</a>
+            ))}</p>
+          )}
 
           {result.systems.map((s) => (
             <div className="group" key={s.system}>

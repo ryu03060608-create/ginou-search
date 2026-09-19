@@ -8,10 +8,13 @@
     "dev": "vite",
     "build": "vite build",
     "build:single": "vite build && node scripts/inline-single.mjs",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "start": "node server/index.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.70.1",
+    "cors": "^2.8.6",
+    "express": "^5.2.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
   },

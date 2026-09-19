@@ -705,3 +705,15 @@ footer a {
 .ai-block.caveats {
   background: var(--accent-soft);
 }
+
+.ai-sources {
+  font-size: 12px;
+  color: var(--sub);
+  margin: 0 0 14px;
+  line-height: 1.7;
+  word-break: break-all;
+}
+.ai-sources a {
+  color: var(--accent);
+  margin-right: 10px;
+}
