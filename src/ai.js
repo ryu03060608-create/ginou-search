@@ -13,13 +13,17 @@ export async function analyze(query) {
   const q = (query || '').trim()
   if (!q) throw new Error('URLまたは会社名を入力してください。')
 
+  const post = (url) => fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ query: q }),
+  })
+
   let res
   try {
-    res = await fetch(`${API_BASE}/api/analyze`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query: q }),
-    })
+    res = await post(`${API_BASE}/api/analyze`)
+    // .htaccess の転送が無い環境（さくら共用など）向けに .php へ自動フォールバック
+    if (res.status === 404) res = await post(`${API_BASE}/api/analyze.php`)
   } catch {
     throw new Error('サーバーに接続できませんでした。バックエンドが起動しているか確認してください。')
   }
